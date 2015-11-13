@@ -11,7 +11,7 @@ def read(fname):
 
 
 setup(name='ecstatic',
-      version='0.3.dev1',
+      version='0.4.dev1',
       description='A small flask application to serve files.',
       long_description=read('README.rst'),
       author='Marc Brinkmann',
