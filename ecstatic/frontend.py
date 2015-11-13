@@ -1,3 +1,4 @@
+import re
 import os
 
 from flask import Blueprint, current_app, abort, send_file, safe_join
@@ -9,8 +10,27 @@ frontend = Blueprint('frontend', __name__)
 @frontend.route('/<path:path>')
 def index(path):
     # create target path
-    if current_app.config['EXPAND_USER']:
+    if current_app.config['EXPAND_USER'] is True:
         path = os.path.expanduser(path)
+
+    rewritten = False
+    rewrite_count = current_app.config['MAX_REWRITES']
+    while True:
+        if rewrite_count <= 0:
+            abort(508)
+
+        for pat, repl, flags in current_app.config['REWRITE_RULES']:
+            path, n_subs = re.subn(pat, repl, path)
+
+            if n_subs:
+                if flags != 'end':
+                    rewritten = True
+                break
+
+        if not rewritten:
+            break
+
+        rewrite_count -= 1
 
     base_path = os.path.realpath(current_app.config['ROOT_PATH'])
     target_path = os.path.realpath(safe_join(base_path, path))
