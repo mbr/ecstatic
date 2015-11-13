@@ -19,7 +19,7 @@ setup(name='ecstatic',
       url='https://github.com/mbr/ecstatic',
       license='MIT',
       packages=find_packages(exclude=['tests']),
-      install_requires=['flask', 'flask-appconfig'],
+      install_requires=['flask', 'flask-appconfig<0.12'],
       classifiers=[
           'Programming Language :: Python :: 2',
           'Programming Language :: Python :: 3',
