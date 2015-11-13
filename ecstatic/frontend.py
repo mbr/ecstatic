@@ -1,58 +1,56 @@
-import re
 import os
 
-from flask import Blueprint, current_app, abort, send_file
+from flask import Blueprint, current_app, abort, send_file, request
 
 frontend = Blueprint('frontend', __name__)
+
+
+def serve(fs_path):
+    """Serves an already validated path (i.e. not outside allowed regions)
+    to the client."""
+    # check if file exists
+    if not os.path.exists(fs_path):
+        abort(404)
+
+    if os.path.isdir(fs_path):
+        if not current_app.config['DIRECTORY_INDEX']:
+            abort(403, 'Directory listing forbidden.')
+        raise NotImplementedError  # TODO: Write easy-on-eyes dirindex
+
+    if not os.path.isfile(fs_path):
+        abort(403, 'Not a valid file.')
+
+    # file exists and is valid. server as attachment
+    return send_file(fs_path,
+                     as_attachment=True,
+                     attachment_filename=os.path.basename(fs_path))
+
+
+def validate_path(root, path):
+    base = os.path.realpath(root)
+    target = os.path.realpath(os.path.join(base, path))
+
+    # central security check: ensure path does not escape base
+    if not os.path.commonprefix([base, target]) == base:
+        abort(403, 'Path violates access restrictions.')
+
+    return target
 
 
 @frontend.route('/', defaults={'path': ''})
 @frontend.route('/<path:path>')
 def index(path):
-    # create target path
-    if current_app.config['EXPAND_USER'] is True:
-        path = os.path.expanduser(path)
+    root_path = current_app.config['ROOT_PATH']
+    if root_path is False:
+        abort(404, 'Serving disabled.')
+    return serve(validate_path(root_path, path))
 
-    rewrite_count = current_app.config['MAX_REWRITES']
-    while True:
-        rewritten = False
-        if rewrite_count <= 0:
-            abort(500, 'Rewrite limit exceeded.')
 
-        for pat, repl, flags in current_app.config['REWRITE_RULES']:
-            path, n_subs = re.subn(pat, repl, path)
+@frontend.route('/~<username>', defaults={'path': ''})
+@frontend.route('/~<username>/<path:path>')
+def homedir(username, path):
+    homes_path = current_app.config['HOMES_PATH']
+    if homes_path is False:
+        return index(request.path)
 
-            if n_subs:
-                if flags != 'last':
-                    rewritten = True
-                break
-
-        if not rewritten:
-            break
-
-        rewrite_count -= 1
-
-    base_path = os.path.realpath(current_app.config['ROOT_PATH'])
-    target_path = os.path.realpath(os.path.join(base_path, path))
-
-    # central security check: ensure path does not escape base_path
-    if not os.path.commonprefix([base_path, target_path]) == base_path:
-        abort(403, 'Path violates access restrictions.')
-
-    # FIXME: use stat here and reuse stat result
-    # check if file exists
-    if not os.path.exists(target_path):
-        abort(404, 'Not found: {}'.format(path))
-
-    if os.path.isdir(target_path):
-        if not current_app.config['DIRECTORY_INDEX']:
-            abort(403, 'Directory listing forbidden.')
-        raise NotImplementedError  # TODO: Write easy-on-eyes dirindex
-
-    if not os.path.isfile(target_path):
-        abort(403, 'Not a valid file.')
-
-    # file exists and is valid. server as attachment
-    return send_file(target_path,
-                     as_attachment=True,
-                     attachment_filename=os.path.basename(target_path))
+    return serve(os.path.join(homes_path, username, path))
