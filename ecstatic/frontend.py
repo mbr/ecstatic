@@ -1,7 +1,7 @@
 import re
 import os
 
-from flask import Blueprint, current_app, abort, send_file, safe_join
+from flask import Blueprint, current_app, abort, send_file
 
 frontend = Blueprint('frontend', __name__)
 
@@ -13,17 +13,17 @@ def index(path):
     if current_app.config['EXPAND_USER'] is True:
         path = os.path.expanduser(path)
 
-    rewritten = False
     rewrite_count = current_app.config['MAX_REWRITES']
     while True:
+        rewritten = False
         if rewrite_count <= 0:
-            abort(508)
+            abort(500, 'Rewrite limit exceeded.')
 
         for pat, repl, flags in current_app.config['REWRITE_RULES']:
             path, n_subs = re.subn(pat, repl, path)
 
             if n_subs:
-                if flags != 'end':
+                if flags != 'last':
                     rewritten = True
                 break
 
@@ -33,22 +33,24 @@ def index(path):
         rewrite_count -= 1
 
     base_path = os.path.realpath(current_app.config['ROOT_PATH'])
-    target_path = os.path.realpath(safe_join(base_path, path))
+    target_path = os.path.realpath(os.path.join(base_path, path))
 
     # central security check: ensure path does not escape base_path
     if not os.path.commonprefix([base_path, target_path]) == base_path:
-        abort(403)
+        abort(403, 'Path violates access restrictions.')
 
     # FIXME: use stat here and reuse stat result
     # check if file exists
     if not os.path.exists(target_path):
-        abort(404)
+        abort(404, 'Not found: {}'.format(path))
 
-    if current_app.config['DIRECTORY_INDEX'] and os.path.isdir(target_path):
+    if os.path.isdir(target_path):
+        if not current_app.config['DIRECTORY_INDEX']:
+            abort(403, 'Directory listing forbidden.')
         raise NotImplementedError  # TODO: Write easy-on-eyes dirindex
 
     if not os.path.isfile(target_path):
-        abort(403)
+        abort(403, 'Not a valid file.')
 
     # file exists and is valid. server as attachment
     return send_file(target_path,
