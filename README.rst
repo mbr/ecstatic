@@ -60,7 +60,7 @@ A simple configuration that serves content from users
 
     [homes]
     # exposes /home/bob/public_html/ on http://example.org/~bob/
-    match = ^~([a-zA-Z0-9]+)/public_html(/.*)?$
+    match = ^~([a-zA-Z0-9]+)(/.*)?$
     fspath = /home/{0}/public_html{1}
     root = /home/{0}
     dirindex = on
