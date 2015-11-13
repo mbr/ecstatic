@@ -1,2 +1,1 @@
-ROOT_PATH = False
-HOMES_PATH = False
+EXPORTS = ''
