@@ -42,10 +42,19 @@ def validate_path(root, path):
 def serve_path(path):
     # try to match path
     for regex, fspath, cfg in current_app.exports:
-        if regex.search(path):
+        m = regex.match(path)
+        if m:
             break
     else:
         abort(404, 'No export found.')
+    match_groups = [v or '' for v in m.groups()]
 
-    target = validate_path(cfg['root'], regex.sub(fspath, path))
+    new_path = fspath.format(*match_groups)
+    root = cfg['root'].format(*match_groups)
+
+    if current_app.debug:
+        print('[{}] {!r} -> {} (root: {})'.format(cfg.name, path, new_path,
+                                                  root))
+
+    target = validate_path(root, new_path)
     return serve(target, cfg)

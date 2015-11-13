@@ -35,7 +35,7 @@ def create_app(configfile=None):
             elif 'root' in sect:
                 # basic section
                 pattern = re.compile(r'^(.*)$')
-                fspath = sect['root'] + r'/\1'
+                fspath = sect['root'] + '/{}'
             else:
                 # section has neither match nor root
                 continue

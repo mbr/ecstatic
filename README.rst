@@ -27,16 +27,19 @@ A section matches a request if it
    path or
 2. Has a ``root`` section with no match present.
 
-Any other section is ignored for matching paths.
+Any other section is ignored.
 
 
 match-Sections
 ~~~~~~~~~~~~~~
 
 Any section that contains a ``match``-key must also contain an ``fspath``-key.
-If the URL path matches the expression given, ``fspath`` is substituted for it.
+If the URL path matches the expression given, ``fspath`` is interpolated as a
+format string, with positional arguments from the expression (missing groups
+are empty strings instead of ``None``).
 
-The section must still contain a ``root``-entry, which is used to jail paths.
+The section must still contain a ``root``-entry, also a format string, which is
+used to jail paths.
 
 
 root-Sections
@@ -50,15 +53,16 @@ Examples
 --------
 
 A simple configuration that serves content from users
-``public_html``-directories (which are assumed to all be in ``/home``) and
+``public_html``-directories (which are assumed to all be inside ``/home``) and
 ``/var/www`` otherwise:
 
 .. code-block:: ini
 
     [homes]
-    match = ^~([a-zA-Z0-9]+)/public_html((?:/.+)?)$
-    fspath = /home/\1/public_html\2
-    root = /home
+    # exposes /home/bob/public_html/ on http://example.org/~bob/
+    match = ^~([a-zA-Z0-9]+)/public_html(/.*)?$
+    fspath = /home/{0}/public_html{1}
+    root = /home/{0}
     dirindex = on
 
     [www]
